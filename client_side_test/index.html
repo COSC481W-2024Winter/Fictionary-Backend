@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tricksters Drawing room Test</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <h2>Canvas Drawing Room</h2>
+    <canvas id="drawingCanvas" width="800" height="600"></canvas>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        const socket = io('http://localhost:3000');
+        const canvas = document.getElementById('drawingCanvas');
+        const context = canvas.getContext('2d');
+        let drawing = false;
+        let canDraw = false; // Variable to track drawing privilege
+
+        console.log("Client script loaded.");
+
+        context.lineWidth = 2;
+        context.strokeStyle = 'black';
+
+        function getMousePos(canvas, evt) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: evt.clientX - rect.left,
+                y: evt.clientY - rect.top
+            };
+        }
+
+        function drawLine(x0, y0, x1, y1) {
+            context.beginPath();
+            context.moveTo(x0, y0);
+            context.lineTo(x1, y1);
+            context.stroke();
+            context.closePath();
+        }
+
+        let lastPos = null;
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (!canDraw) return;
+            const pos = getMousePos(canvas, e);
+            lastPos = pos; // Set the initial position for drawing
+            drawing = true;
+        });
+    
+        canvas.addEventListener('mousemove', (e) => {
+            if (!drawing || !canDraw) return;
+            const pos = getMousePos(canvas, e);
+            if (lastPos) {
+                drawLine(lastPos.x, lastPos.y, pos.x, pos.y); // Draw line from the last position
+                const drawData = { room: 'room1', x0: lastPos.x, y0: lastPos.y, x1: pos.x, y1: pos.y };
+                console.log('Emitting draw event', drawData); // Log data being sent
+                socket.emit('draw', drawData); // Emit draw event
+                lastPos = pos; // Update the last position
+            }
+        });
+    
+    
+        canvas.addEventListener('mouseup', () => {
+            drawing = false;
+            lastPos = null; // Reset the last position
+        });
+    
+        canvas.addEventListener('mouseout', () => {
+            if (drawing) {
+                drawing = false;
+                lastPos = null; // Reset the last position
+            }
+        });
+
+        socket.on('connect', () => {
+            console.log("Connected to Socket.IO server");
+            socket.emit('joinRoom', 'room1');
+        });
+
+        socket.on('drawingPrivilege', (hasPrivilege) => {
+            canDraw = hasPrivilege;
+            console.log(`Received drawing privilege: ${canDraw}`);
+        });
+        socket.on('drawing', (data) => {
+            // Draw on the canvas using the received data
+            drawLine(data.x0, data.y0, data.x1, data.y1);
+        });
+    </script>
+</body>
+</html>
