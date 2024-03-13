@@ -38,7 +38,10 @@ io.on('connection', (socket) => {
     socket.join(room);
     roomUsers[room] = roomUsers[room] || [];
     const isHost = roomUsers[room].length === 0; // First user to join is the host
-    roomUsers[room].push({ id: userid, name: userName, isHost });
+    const totalScore = 0;
+    const trickScore = 0;
+    const artScore = 0;
+    roomUsers[room].push({ id: userid, name: userName, isHost, totalScore, trickScore, artScore });
 
     console.log(roomUsers[room]);
     // Broadcast updated user list to the room
@@ -75,6 +78,42 @@ io.on('connection', (socket) => {
         socket.to(data.room).emit('drawing', data);
       }
     }
+  });
+
+  // Listener to update the scores of players after submitting their votes on guesses
+  socket.on('updateScores', ({room, authorId, voterId}) => {
+    const author = roomUsers[room][roomUsers[room].findIndex(user => user.id === authorId)];
+    const voter = roomUsers[room][roomUsers[room].findIndex(user => user.id === voterId)];
+
+    // checking the role of the author
+    if(author.isHost){
+      // the voter gains a single bonus point that doesn't count towards either hidden score
+      voter.totalScore++;
+
+      // The author (in this case, the artist) gains two artist points [hidden] as well as two more points for their visible score
+      author.artScore += 2;
+      author.totalScore += 2;
+    }
+    else{
+      // if the voter's total score is already 0, they cannot lose more points
+      if(voter.totalScore > 0){
+        // the voter's total score is reduced to simulate the author stealing them for their total score
+        voter.totalScore--;
+      }
+      // The author's trickster score [hidden] and total score [visible] go up by the same amount of points they just "stole" from the voter
+      author.trickScore++;
+      author.totalScore++;
+    }
+
+    // Broadcast updated user list to the room
+    io.to(room).emit('updateUserList', roomUsers[room].map(user => ({
+      id: user.id,
+      name: user.name,
+      isHost: user.isHost,
+      totalScore: user.totalScore,
+      trickScore: user.trickScore,
+      artScore: user.artScore
+    })));
   });
 
   socket.on('disconnect', () => {
