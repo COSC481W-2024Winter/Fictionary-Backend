@@ -1,1 +1,6 @@
 node_modules/
+
+# environment variables for local testing
+# (deployment has veriables in DigitalOcean)
+.env
+/.env
