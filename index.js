@@ -124,13 +124,13 @@ io.on('connection', (socket) => {
         const wasHost = roomUsers[room][index].isHost;
         roomUsers[room].splice(index, 1);
         // Broadcast updated user list
-        io.to(room).emit('updateUserList', roomUsers[room].map(user => ({ id: user.id, name: user.name, isHost: user.isHost })));
+        io.to(room).emit('updateUserList', roomUsers[room].map(user => ({ id: user.id, name: user.name, isHost: user.isHost, totalScore: user.totalScore, trickScore: user.trickScore, artScore: user.artScore})));
         // If the host disconnected, pass host and drawing privilege to the next user
         if (wasHost && roomUsers[room].length > 0) {
           roomUsers[room][0].isHost = true; // Designate new host
           io.to(roomUsers[room][0].id).emit('drawingPrivilege', true);
           // Notify users of the new host
-          io.to(room).emit('updateUserList', roomUsers[room].map(user => ({ id: user.id, name: user.name, isHost: user.isHost })));
+          io.to(room).emit('updateUserList', roomUsers[room].map(user => ({ id: user.id, name: user.name, isHost: user.isHost, totalScore: user.totalScore, trickScore: user.trickScore, artScore: user.artScore})));
         }
         break;
       }
