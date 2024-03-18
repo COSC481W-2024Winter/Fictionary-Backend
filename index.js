@@ -26,6 +26,7 @@ const io = socketIo(server, {
 
 // Modified object to track users in rooms, including their names
 const roomUsers = {};
+const gameState = {};
 
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
@@ -34,7 +35,7 @@ io.on('connection', (socket) => {
   socket.emit('yourSocketId', { id: socket.id });
 
   // Modified event listener for joining a room, now includes userName
-  socket.on('joinRoom', ({userid, room, userName}) => {
+  socket.on('joinRoom', ({ userid, room, userName }) => {
     socket.join(room);
     roomUsers[room] = roomUsers[room] || [];
     const isHost = roomUsers[room].length === 0; // First user to join is the host
@@ -55,7 +56,6 @@ io.on('connection', (socket) => {
 
     console.log(`User ${socket.id} (${userName}) joined room: ${room}`);
   });
-
   // Listen for game start event, only allow host to start
   socket.on('startGame', (room) => {
     if (roomUsers[room] && roomUsers[room][0].id === socket.id) { // Check if sender is the host
@@ -67,11 +67,62 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('voteCategory', ({ roomId, category }) => {
+    console.log(roomId, category);
+    if (!gameState[roomId]) {
+      gameState[roomId] = { votes: {} }; // Initialize if not present
+    }
+
+    // Initialize votes for the category if not present
+    if (!gameState[roomId].votes[category]) {
+      gameState[roomId].votes[category] = 0;
+    }
+
+    gameState[roomId].votes[category] += 1; // Increment vote count
+
+    // Optional: Broadcast updated votes to the room if desired
+    // io.to(roomId).emit('updateVotes', gameState[roomId].votes);
+  });
+
+  // Event to handle end of voting and selection of category
+  socket.on('endVoting', (roomId) => {
+    if (gameState[roomId] && gameState[roomId].votes) {
+      const votes = gameState[roomId].votes;
+      const categories = Object.keys(votes);
+      let maxVotes = 0;
+      let winningCategories = [];
+
+      categories.forEach(category => {
+        if (votes[category] > maxVotes) {
+          winningCategories = [category];
+          maxVotes = votes[category];
+        } else if (votes[category] === maxVotes) {
+          winningCategories.push(category);
+        }
+      });
+
+      // Handle ties by selecting randomly
+      const selectedCategory = winningCategories[Math.floor(Math.random() * winningCategories.length)];
+
+      // Broadcast the selected category to the room
+      io.to(roomId).emit('categorySelected', selectedCategory);
+    }
+  });
+
+  socket.on('requestCurrentCategory', (roomId) => {
+    if (gameState[roomId] && gameState[roomId].selectedCategory) {
+      console.log(roomId);
+      socket.emit('currentCategory', gameState[roomId].selectedCategory);
+    }
+  });
+
   socket.on('draw', (data) => {
+    console.log("Draw Emitted");
     if (roomUsers[data.room]) {
       const user = roomUsers[data.room].find(user => user.id === socket.id);
 
       if (user && user.isHost) {
+        console.log(data);
         socket.to(data.room).emit('drawing', data);
       }
     }
