@@ -48,7 +48,10 @@ io.on('connection', (socket) => {
     io.to(room).emit('updateUserList', roomUsers[room].map(user => ({
       id: user.id,
       name: user.name,
-      isHost: user.isHost
+      isHost: user.isHost,
+      totalScore: user.totalScore,
+      trickScore: user.trickScore,
+      artScore: user.artScore
     })));
 
     // Grant drawing privilege to the host
