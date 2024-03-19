@@ -19,7 +19,7 @@ const seedrandom = require('seedrandom'); //seed random generation
 //Mongo DB conection
 const { MongoClient } = require("mongodb");
 const dbUser = process.env.DATABASE_USER;
-const dbPass = process.env.DATABASE_PASSWORD;
+const dbPass = process.env.DATABASE_PASSWORD; //Make sure these work on deployment
 const uri = `mongodb+srv://${dbUser}:${dbPass}@cluster.ieggqf8.mongodb.net/?retryWrites=true&w=majority&appName=cluster`;
 const client = new MongoClient(uri);
 
@@ -53,7 +53,7 @@ async function getWords(){
 // Initialize Express app, HTTP server, and Socket.IO
 const app = express();
 
-app.use(cors({origin: "http://localhost:3000"})) //Allow CORS AAAAA -> Swap url later (needs to be front end url)
+app.use(cors({origin: "https://fictionary-frontend-lut5d.ondigitalocean.app/"})) //Allow CORS AAAAA -> Swap url later (needs to be front end url)
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
