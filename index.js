@@ -53,7 +53,7 @@ async function getWords(){
 // Initialize Express app, HTTP server, and Socket.IO
 const app = express();
 
-app.use(cors({origin: "https://fictionary-frontend-lut5d.ondigitalocean.app/"})) //Allow CORS AAAAA -> Swap url later (needs to be front end url)
+app.use(cors({origin: "https://fictionary-frontend-lut5d.ondigitalocean.app"})) //Allow CORS  -> Swap url later (needs to be front end url)
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
