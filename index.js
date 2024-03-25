@@ -14,8 +14,46 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 
+const cors = require('cors');
+const seedrandom = require('seedrandom'); //seed random generation
+//Mongo DB conection
+const { MongoClient } = require("mongodb");
+const dbUser = process.env.DATABASE_USER;
+const dbPass = process.env.DATABASE_PASSWORD; //Make sure these work on deployment
+const uri = `mongodb+srv://${dbUser}:${dbPass}@cluster.ieggqf8.mongodb.net/?retryWrites=true&w=majority&appName=cluster`;
+const client = new MongoClient(uri);
+
+//getWords testing
+async function getWords(){
+  try{
+    const database = client.db('FictionaryDB');
+    const words = database.collection('words');
+    const category = 'animals'; //TODO: will be changed by request param
+    // Query for a word for given category
+    const cursor = words.find({category: category}).project({word:1 , _id:0});
+
+    let wordsFromcategory = [];
+
+    while(await cursor.hasNext()){
+      const doc = await cursor.next();
+      wordsFromcategory.push(doc['word']);
+      console.log(doc['word']);
+    }
+    
+    //get random word
+    //let random = Math.floor(Math.random() * wordsFromCategory.length);
+    //randomWord = wordsFromCategory[random]; //get random words
+
+  }finally{
+    await client.close();
+  }
+}
+//getWords().catch(console.dir);
+
 // Initialize Express app, HTTP server, and Socket.IO
 const app = express();
+
+app.use(cors({origin: "https://fictionary-frontend-lut5d.ondigitalocean.app"})) //Allow CORS  -> Swap url later (needs to be front end url)
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
@@ -23,6 +61,74 @@ const io = socketIo(server, {
     methods: ["GET", "POST"]
   }
 });
+
+//get categories
+app.get('/categories',(req,res)=>{
+  async function run() {
+    //New connection
+    const client = new MongoClient(uri);
+    const theSeed = req.query.seed;
+    console.log("seed:"+theSeed);    
+
+    try {
+      const database = client.db('FictionaryDB');
+      const words = database.collection('words');
+      // Query for a distinct categories
+      const categories = await words.distinct('category');
+      let randomCategories = [];
+
+      //get 3 random items from the list
+      for(let i = 0; i < 3; i++ ){
+        const rng = seedrandom(theSeed);
+        console.log(rng());
+        let random = Math.floor(rng() * categories.length - 1); 
+        randomCategories = randomCategories.concat(categories.splice(random,1));
+      }
+
+      console.log(randomCategories);
+      let myJson = JSON.stringify(randomCategories);
+      //console.log(myJson);
+      res.send(myJson);//convert to json before sending
+    } finally {
+      // Ensures that the client will close when you finish/error
+      await client.close();
+    }
+  }
+  run().catch(console.dir);
+})
+
+//get words
+//takes in category param
+app.get('/words',(req,res)=>{
+  async function getWords(){
+    try{
+      const chosenCategory = req.query.category;//retrieve category param
+
+      const database = client.db('FictionaryDB');
+      const words = database.collection('words');
+      //const category = 'animals'; //TODO: will be changed by request param
+      // Query for a word for given category
+      const cursor = words.find({category: chosenCategory}).project({word:1 , _id:0});
+  
+      let wordsFromcategory = [];
+  
+      while(await cursor.hasNext()){
+        const doc = await cursor.next();
+        wordsFromcategory.push(doc['word']);
+        console.log(doc['word']);
+      }
+      
+      await cursor.close();
+      //get random word
+      //let random = Math.floor(Math.random() * wordsFromCategory.length);
+      //randomWord = wordsFromCategory[random]; //get random words
+  
+    }finally{
+      await client.close();
+    }
+  }
+  getWords().catch(console.dir);
+})
 
 // Modified object to track users in rooms, including their names
 const roomUsers = {};
