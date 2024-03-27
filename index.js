@@ -9,6 +9,12 @@
  * @remarks: Ensure that all necessary node modules are installed and environment variables are set before running this file. 
  *           It listens on port 3000 for incoming connections.
  */
+
+require("dotenv").config();
+const FRONTEND_URL = process.env.FRONTEND_URL;
+console.log(process.env.DATABASE_USER);
+// console.log(process.env.DATABASE_PASSWORD);
+
 // Import required modules
 const express = require('express');
 const http = require('http');
@@ -53,7 +59,7 @@ async function getWords(){
 // Initialize Express app, HTTP server, and Socket.IO
 const app = express();
 
-app.use(cors({origin: "https://fictionary-frontend-lut5d.ondigitalocean.app"})) //Allow CORS  -> Swap url later (needs to be front end url)
+app.use(cors({origin: FRONTEND_URL, methods: ["GET"]})) //Allow CORS  -> Swap url later (needs to be front end url)
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
