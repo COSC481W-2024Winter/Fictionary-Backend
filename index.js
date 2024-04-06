@@ -19,6 +19,8 @@ console.log(process.env.DATABASE_USER);
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
+const players = 0;
+const usedIndexes = [];
 
 const cors = require('cors');
 const seedrandom = require('seedrandom'); //seed random generation
@@ -281,6 +283,70 @@ io.on('connection', (socket) => {
       artScore: user.artScore
     })));
   });
+
+  socket.on('category submitted', () => {
+    players++;
+    if (players == roomUsers[room].length) {
+      players = 0; 
+      io.to(room).emit('cat go next');
+    }
+
+  });
+
+  socket.on('guess submitted', () => {
+    players++;
+    if (players == roomUsers[room].length - 1) {
+      players = 0; 
+      io.to(room).emit('guess go next');
+    }
+
+  });
+
+  socket.on('vote submitted', () => {
+    players++;
+    if (players == roomUsers[room].length - 1) {
+      players = 0; 
+      io.to(room).emit('vote go next');
+    }
+
+  });
+
+  
+
+  socket.on('drawing submitted', () => {
+
+  });
+
+  const getRandomIndex = (maxIndex) => {
+    let ranNum;
+    do {
+    ranNum = Math.floor(Math.random() * maxIndex) + 1;
+    } while (usedIndexes.includes(ranNum));
+
+    usedIndexes.push(index);
+    return ranNum;
+  };
+
+  socket.on('pick artist', () =>  {
+    const index = getRandomIndex(roomUsers[room].length);
+    const newArtist = roomUsers[room][index];
+    const previousHostIndex = roomUsers[room].findIndex((user) => user.isHost);
+    io.to(room).emit('artistPicked', newArtist, index, previousHostIndex);
+
+
+  });
+
+  socket.on('reset indexes', () => {
+    usedIndexes = [];
+  });
+
+  socket.on('updateHost', (index, previousHostIndex) => {
+    roomUsers[room][index].isHost = true;
+    roomUsers[room][previousHostIndex].isHost = false;
+    io.to(roomUsers[room][index].id).emit('drawingPrivilege', true);
+    io.to(roomUsers[room][previousHostIndex].id).emit('drawingPrivilege', false);
+    io.to(room).emit('updateUserList', roomUsers[room].map(user => ({ id: user.id, name: user.name, isHost: user.isHost, totalScore: user.totalScore, trickScore: user.trickScore, artScore: user.artScore})));
+});
 
   socket.on('disconnect', () => {
     console.log(`User ${socket.id} disconnected`);
