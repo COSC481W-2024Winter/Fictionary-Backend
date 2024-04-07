@@ -19,9 +19,6 @@ console.log(process.env.DATABASE_USER);
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
-const players = 0;
-const usedIndexes = [];
-
 const cors = require('cors');
 const seedrandom = require('seedrandom'); //seed random generation
 //Mongo DB conection
@@ -141,6 +138,10 @@ app.get('/words',(req,res)=>{
 // Modified object to track users in rooms, including their names
 const roomUsers = {};
 const gameState = {};
+
+const players = 0;
+const usedIndexes = [];
+const roundCount = 0;
 
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
@@ -311,7 +312,21 @@ io.on('connection', (socket) => {
 
   });
 
-  
+  socket.on('score submitted', () => {
+    players++;
+    if(players == roomUsers[room].length) {
+      players = 0; 
+    if(roundCount === 3) {
+      io.to(room).emit('game over');
+    } else if (roomUsers[room].length === usedIndexes.length) {
+      roundCount++;
+      usedIndexes = [];
+      io.to(room).emit('next round');
+    } else {
+      io.to(room).emit('score go next');
+    }
+  }
+  });
 
   socket.on('drawing submitted', () => {
 
@@ -336,9 +351,6 @@ io.on('connection', (socket) => {
 
   });
 
-  socket.on('reset indexes', () => {
-    usedIndexes = [];
-  });
 
   socket.on('updateHost', (index, previousHostIndex) => {
     roomUsers[room][index].isHost = true;
@@ -348,6 +360,13 @@ io.on('connection', (socket) => {
     io.to(room).emit('updateUserList', roomUsers[room].map(user => ({ id: user.id, name: user.name, isHost: user.isHost, totalScore: user.totalScore, trickScore: user.trickScore, artScore: user.artScore})));
 });
 
+socket.on('results submitted', () => {
+  players++;
+  if (players == roomUsers[room].length) {
+    players = 0; 
+    io.to(room).emit('result go next');
+  }
+});
   socket.on('disconnect', () => {
     console.log(`User ${socket.id} disconnected`);
     for (const room in roomUsers) {
