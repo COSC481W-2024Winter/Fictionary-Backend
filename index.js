@@ -29,33 +29,6 @@ const dbPass = process.env.DATABASE_PASSWORD; //Make sure these work on deployme
 const uri = `mongodb+srv://${dbUser}:${dbPass}@cluster.ieggqf8.mongodb.net/?retryWrites=true&w=majority&appName=cluster`;
 const client = new MongoClient(uri);
 
-//getWords testing
-async function getWords(){
-  try{
-    const database = client.db('FictionaryDB');
-    const words = database.collection('words');
-    const category = 'animals'; //TODO: will be changed by request param
-    // Query for a word for given category
-    const cursor = words.find({category: category}).project({word:1 , _id:0});
-
-    let wordsFromcategory = [];
-
-    while(await cursor.hasNext()){
-      const doc = await cursor.next();
-      wordsFromcategory.push(doc['word']);
-      console.log(doc['word']);
-    }
-    
-    //get random word
-    //let random = Math.floor(Math.random() * wordsFromCategory.length);
-    //randomWord = wordsFromCategory[random]; //get random words
-
-  }finally{
-    await client.close();
-  }
-}
-//getWords().catch(console.dir);
-
 // Initialize Express app, HTTP server, and Socket.IO
 const app = express();
 
@@ -67,6 +40,35 @@ const io = socketIo(server, {
     methods: ["GET", "POST"]
   }
 });
+
+//getWords testing
+async function getWords(){
+  try{
+    const database = client.db('FictionaryDB');
+    const words = database.collection('words');
+    const category = 'animals'; //TODO: will be changed by request param
+    // Query for a word for given category
+    const cursor = words.find({category: category}).project({word:1 , _id:0});
+
+    let wordsFromCategory = [];
+
+    while(await cursor.hasNext()){
+      const doc = await cursor.next();
+      wordsFromCategory.push(doc['word']);
+      console.log(doc['word']);
+    }
+    
+    //get random word
+    let random = Math.floor(Math.random() * wordsFromCategory.length);
+    randomWord = wordsFromCategory[random]; 
+    console.log(randomWord);
+
+  }finally{
+    await client.close();
+  }
+}
+getWords().catch(console.dir);
+
 
 //get categories
 app.get('/categories',(req,res)=>{
@@ -108,6 +110,7 @@ app.get('/categories',(req,res)=>{
 app.get('/words',(req,res)=>{
   async function getWords(){
     try{
+      const theSeed = req.query.seed; //retrieve seed
       const chosenCategory = req.query.category;//retrieve category param
 
       const database = client.db('FictionaryDB');
@@ -116,18 +119,26 @@ app.get('/words',(req,res)=>{
       // Query for a word for given category
       const cursor = words.find({category: chosenCategory}).project({word:1 , _id:0});
   
-      let wordsFromcategory = [];
+      let wordsFromCategory = [];
+      let randomWord;
   
       while(await cursor.hasNext()){
         const doc = await cursor.next();
-        wordsFromcategory.push(doc['word']);
+        wordsFromCategory.push(doc['word']);
         console.log(doc['word']);
       }
       
       await cursor.close();
       //get random word
+      const rng = seedrandom(theSeed);
+      let random = Math.floor(rng() * wordsFromCategory.length - 1); 
       //let random = Math.floor(Math.random() * wordsFromCategory.length);
-      //randomWord = wordsFromCategory[random]; //get random words
+      randomWord = wordsFromCategory[random]; //get random word
+
+      //send
+      let myJson = JSON.stringify(randomWord);
+      //console.log(myJson);
+      res.send(myJson);//convert to json before sending
   
     }finally{
       await client.close();
