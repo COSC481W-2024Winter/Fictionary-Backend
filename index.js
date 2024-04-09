@@ -27,9 +27,7 @@ const { MongoClient } = require("mongodb");
 const dbUser = process.env.DATABASE_USER;
 const dbPass = process.env.DATABASE_PASSWORD; //Make sure these work on deployment
 const uri = `mongodb+srv://${dbUser}:${dbPass}@cluster.ieggqf8.mongodb.net/?retryWrites=true&w=majority&appName=cluster`;
-const uri2 = `mongodb+srv://${dbUser}:${dbPass}@fictdb.p0sfsla.mongodb.net/?retryWrites=true&w=majority&appName=FictDB`;
 const client = new MongoClient(uri);
-const client2 = newMongoClient(uri2);
 const bodyParser = require('body-parser');
 
 //getWords testing
@@ -138,13 +136,14 @@ app.get('/words',(req,res)=>{
   }
   getWords().catch(console.dir);
 })
+
 // add room ids to database
 app.use(bodyParser.json());
   app.post('/addRoomId', async (req, res) => {
     const { roomId } = req.body;
     try {
-      await client2.connect();
-      const database = client2.db('FictDB');
+      await client.connect();
+      const database = client.db('FictionaryDB');
       const roomsCollection = database.collection('rooms');
 
       const result = await roomsCollection.insertOne({ roomId });
@@ -153,7 +152,7 @@ app.use(bodyParser.json());
       console.error('Error adding roomId to database:', error);
         res.status(500).json({ error: 'Failed to add roomId to database' });
     } finally {
-      await client2.close();
+      await client.close();
     }
     
   });
@@ -164,10 +163,10 @@ app.use(bodyParser.json());
 
     try {
         // Connect to MongoDB
-        await client2.connect();
+        await client.connect();
 
         // Access database and collection
-        const database = client2.db('FictDB'); 
+        const database = client.db('FictionaryDB'); 
         const roomsCollection = database.collection('rooms'); 
 
         // Check if room ID exists in the collection
@@ -185,7 +184,7 @@ app.use(bodyParser.json());
         res.status(500).json({ error: 'Internal server error' });
     } finally {
         // Close MongoDB connection
-        await client2.close();
+        await client.close();
     }
 });
 // Modified object to track users in rooms, including their names
