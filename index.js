@@ -28,10 +28,11 @@ const dbUser = process.env.DATABASE_USER;
 const dbPass = process.env.DATABASE_PASSWORD; //Make sure these work on deployment
 const uri = `mongodb+srv://${dbUser}:${dbPass}@cluster.ieggqf8.mongodb.net/?retryWrites=true&w=majority&appName=cluster`;
 const client = new MongoClient(uri);
+const bodyParser = require('body-parser');
 
 // Initialize Express app, HTTP server, and Socket.IO
 const app = express();
-
+//app.use(express.json());
 app.use(cors({origin: FRONTEND_URL, methods: ["GET"]})) //Allow CORS  -> Swap url later (needs to be front end url)
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -150,6 +151,56 @@ app.get('/words',(req,res)=>{
   getWords().catch(console.dir);
 })
 
+// add room ids to database
+app.use(bodyParser.json());
+  app.post('/addRoomId', async (req, res) => {
+    const { roomId } = req.body;
+    try {
+      await client.connect();
+      const database = client.db('FictionaryDB');
+      const roomsCollection = database.collection('rooms');
+
+      const result = await roomsCollection.insertOne({ roomId });
+      res.status(200).json({ message: 'RoomId received successfully', roomId });
+    } catch (error) {
+      console.error('Error adding roomId to database:', error);
+        res.status(500).json({ error: 'Failed to add roomId to database' });
+    } finally {
+      await client.close();
+    }
+    
+  });
+
+  // 
+  app.get('/validateRoom/:roomId', async (req, res) => {
+    const { roomId } = req.params;
+
+    try {
+        // Connect to MongoDB
+        await client.connect();
+
+        // Access database and collection
+        const database = client.db('FictionaryDB'); 
+        const roomsCollection = database.collection('rooms'); 
+
+        // Check if room ID exists in the collection
+        const room = await roomsCollection.findOne({ roomId });
+
+        if (room) {
+            // Room ID exists, return success response
+            res.status(200).json({ message: 'Room ID is valid' });
+        } else {
+            // Room ID does not exist, return error response
+            res.status(404).json({ error: 'Room ID not found' });
+        }
+    } catch (error) {
+        console.error('Error validating room ID:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        // Close MongoDB connection
+        await client.close();
+    }
+});
 // Modified object to track users in rooms, including their names
 const roomUsers = {};
 const gameState = {};
@@ -294,7 +345,8 @@ io.on('connection', (socket) => {
       trickScore: user.trickScore,
       artScore: user.artScore
     })));
-  });
+  }); 
+  
 
   socket.on('disconnect', () => {
     console.log(`User ${socket.id} disconnected`);
