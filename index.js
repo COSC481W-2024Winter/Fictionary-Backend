@@ -44,6 +44,9 @@ const io = socketIo(server, {
 //getWords testing
 async function getWords(){
   try{
+    //make new connection
+    await client.connect();
+
     const database = client.db('FictionaryDB');
     const words = database.collection('words');
     const category = 'animals'; //TODO: will be changed by request param
@@ -62,19 +65,17 @@ async function getWords(){
     let random = Math.floor(Math.random() * wordsFromCategory.length);
     randomWord = wordsFromCategory[random]; 
     console.log(randomWord);
-
-  }finally{
-    await client.close();
+  } catch (error) {
+    console.log(error);
   }
 }
-getWords().catch(console.dir);
-
+//getWords().catch(console.dir);
 
 //get categories
 app.get('/categories',(req,res)=>{
   async function run() {
     //New connection
-    const client = new MongoClient(uri);
+    await client.connect();
     const theSeed = req.query.seed;
     console.log("seed:"+theSeed);    
 
@@ -97,9 +98,9 @@ app.get('/categories',(req,res)=>{
       let myJson = JSON.stringify(randomCategories);
       //console.log(myJson);
       res.send(myJson);//convert to json before sending
-    } finally {
+    } catch(error) {
       // Ensures that the client will close when you finish/error
-      await client.close();
+      console.log(error);
     }
   }
   run().catch(console.dir);
@@ -110,6 +111,8 @@ app.get('/categories',(req,res)=>{
 app.get('/words',(req,res)=>{
   async function getWords(){
     try{
+      await client.connect();
+
       const theSeed = req.query.seed; //retrieve seed
       const chosenCategory = req.query.category;//retrieve category param
 
@@ -137,11 +140,11 @@ app.get('/words',(req,res)=>{
 
       //send
       let myJson = JSON.stringify(randomWord);
-      //console.log(myJson);
+      console.log(myJson);
       res.send(myJson);//convert to json before sending
   
-    }finally{
-      await client.close();
+    }catch (error) {
+      console.log(error);
     }
   }
   getWords().catch(console.dir);
