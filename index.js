@@ -190,7 +190,8 @@ app.use(bodyParser.json());
 // Modified object to track users in rooms, including their names
 const roomUsers = {};
 const gameState = {};
-
+let gameStart = {};
+let submits = 0;
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
 
@@ -199,6 +200,10 @@ io.on('connection', (socket) => {
 
   // Modified event listener for joining a room, now includes userName
   socket.on('joinRoom', ({ userid, room, userName }) => {
+    if(!gameStart[room]) {
+      gameStart[room] = { isStarted: false };
+    }
+    if(!gameStart[room].isStarted) {
     socket.join(room);
     roomUsers[room] = roomUsers[room] || [];
     const isHost = roomUsers[room].length === 0; // First user to join is the host
@@ -224,11 +229,15 @@ io.on('connection', (socket) => {
     }
 
     console.log(`User ${socket.id} (${userName}) joined room: ${room}`);
+  }
   });
   // Listen for game start event, only allow host to start
   socket.on('startGame', (room) => {
     if (roomUsers[room] && roomUsers[room][0].id === socket.id) { // Check if sender is the host
       if (roomUsers[room].length >= 3) { // Check for minimum number of participants
+        if(!gameStart[room].isStarted) {
+          gameStart[room].isStarted = true;
+        }
         io.to(room).emit('gameStarted');
       } else {
         socket.emit('error', 'Not enough players to start the game.');
@@ -237,7 +246,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('voteCategory', ({ roomId, category }) => {
-    console.log(roomId, category);
+    console.log('vote category happened');
+    submits++;
+   // console.log(roomId, category);
     if (!gameState[roomId]) {
       gameState[roomId] = { votes: {} }; // Initialize if not present
     }
@@ -248,13 +259,17 @@ io.on('connection', (socket) => {
     }
 
     gameState[roomId].votes[category] += 1; // Increment vote count
-
+    if(submits == roomUsers[roomId].length) {
+      submits = 0;
+      io.to(roomId).emit('allVoted', submits);
+    }
     // Optional: Broadcast updated votes to the room if desired
     // io.to(roomId).emit('updateVotes', gameState[roomId].votes);
   });
 
   // Event to handle end of voting and selection of category
   socket.on('endVoting', (roomId) => {
+    console.log('end voting happened');
     if (gameState[roomId] && gameState[roomId].votes) {
       const votes = gameState[roomId].votes;
       const categories = Object.keys(votes);
@@ -332,8 +347,29 @@ io.on('connection', (socket) => {
       artScore: user.artScore
     })));
   }); 
-  
 
+//this is for the guessing on the drawing page
+  socket.on('guessSubmitted', ( {room} ) => {
+    submits++;
+    if(submits == (roomUsers[room].length - 1)) {
+      submits = 0;
+      //this never fired
+      io.to(room).emit('allGuessed', submits);
+    }
+  });
+
+  socket.on('drawingSubmitted', (room) => {
+    io.to(room).emit('timeToGuess', 'It is time to guess');
+  });
+  
+  // this is for the voting on the voting page
+  socket.on('voteSubmitted', ( {room} ) => {
+    submits++;
+    if(submits == roomUsers[room].length - 1) {
+      submits = 0;
+      io.to(room).emit('votingDone', 'Voting is done');
+    }
+});
   socket.on('disconnect', () => {
     console.log(`User ${socket.id} disconnected`);
     for (const room in roomUsers) {
