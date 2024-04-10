@@ -31,27 +31,27 @@ const client = new MongoClient(uri);
 const bodyParser = require('body-parser');
 
 //getWords testing
-async function getWords(){
-  try{
+async function getWords() {
+  try {
     const database = client.db('FictionaryDB');
     const words = database.collection('words');
     const category = 'animals'; //TODO: will be changed by request param
     // Query for a word for given category
-    const cursor = words.find({category: category}).project({word:1 , _id:0});
+    const cursor = words.find({ category: category }).project({ word: 1, _id: 0 });
 
     let wordsFromcategory = [];
 
-    while(await cursor.hasNext()){
+    while (await cursor.hasNext()) {
       const doc = await cursor.next();
       wordsFromcategory.push(doc['word']);
       console.log(doc['word']);
     }
-    
+
     //get random word
     //let random = Math.floor(Math.random() * wordsFromCategory.length);
     //randomWord = wordsFromCategory[random]; //get random words
 
-  }finally{
+  } finally {
     await client.close();
   }
 }
@@ -60,7 +60,7 @@ async function getWords(){
 // Initialize Express app, HTTP server, and Socket.IO
 const app = express();
 //app.use(express.json());
-app.use(cors({origin: FRONTEND_URL, methods: ["GET"]})) //Allow CORS  -> Swap url later (needs to be front end url)
+app.use(cors({ origin: FRONTEND_URL, methods: ["GET"] })) //Allow CORS  -> Swap url later (needs to be front end url)
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
@@ -70,12 +70,12 @@ const io = socketIo(server, {
 });
 
 //get categories
-app.get('/categories',(req,res)=>{
+app.get('/categories', (req, res) => {
   async function run() {
     //New connection
     const client = new MongoClient(uri);
     const theSeed = req.query.seed;
-    console.log("seed:"+theSeed);    
+    console.log("seed:" + theSeed);
 
     try {
       const database = client.db('FictionaryDB');
@@ -85,11 +85,11 @@ app.get('/categories',(req,res)=>{
       let randomCategories = [];
 
       //get 3 random items from the list
-      for(let i = 0; i < 3; i++ ){
+      for (let i = 0; i < 3; i++) {
         const rng = seedrandom(theSeed);
         console.log(rng());
-        let random = Math.floor(rng() * categories.length - 1); 
-        randomCategories = randomCategories.concat(categories.splice(random,1));
+        let random = Math.floor(rng() * categories.length - 1);
+        randomCategories = randomCategories.concat(categories.splice(random, 1));
       }
 
       console.log(randomCategories);
@@ -106,31 +106,31 @@ app.get('/categories',(req,res)=>{
 
 //get words
 //takes in category param
-app.get('/words',(req,res)=>{
-  async function getWords(){
-    try{
+app.get('/words', (req, res) => {
+  async function getWords() {
+    try {
       const chosenCategory = req.query.category;//retrieve category param
 
       const database = client.db('FictionaryDB');
       const words = database.collection('words');
       //const category = 'animals'; //TODO: will be changed by request param
       // Query for a word for given category
-      const cursor = words.find({category: chosenCategory}).project({word:1 , _id:0});
-  
+      const cursor = words.find({ category: chosenCategory }).project({ word: 1, _id: 0 });
+
       let wordsFromcategory = [];
-  
-      while(await cursor.hasNext()){
+
+      while (await cursor.hasNext()) {
         const doc = await cursor.next();
         wordsFromcategory.push(doc['word']);
         console.log(doc['word']);
       }
-      
+
       await cursor.close();
       //get random word
       //let random = Math.floor(Math.random() * wordsFromCategory.length);
       //randomWord = wordsFromCategory[random]; //get random words
-  
-    }finally{
+
+    } finally {
       await client.close();
     }
   }
@@ -139,53 +139,53 @@ app.get('/words',(req,res)=>{
 
 // add room ids to database
 app.use(bodyParser.json());
-  app.post('/addRoomId', async (req, res) => {
-    const { roomId } = req.body;
-    try {
-      await client.connect();
-      const database = client.db('FictionaryDB');
-      const roomsCollection = database.collection('rooms');
+app.post('/addRoomId', async (req, res) => {
+  const { roomId } = req.body;
+  try {
+    await client.connect();
+    const database = client.db('FictionaryDB');
+    const roomsCollection = database.collection('rooms');
 
-      const result = await roomsCollection.insertOne({ roomId });
-      res.status(200).json({ message: 'RoomId received successfully', roomId });
-    } catch (error) {
-      console.error('Error adding roomId to database:', error);
-        res.status(500).json({ error: 'Failed to add roomId to database' });
-    } finally {
-      await client.close();
+    const result = await roomsCollection.insertOne({ roomId });
+    res.status(200).json({ message: 'RoomId received successfully', roomId });
+  } catch (error) {
+    console.error('Error adding roomId to database:', error);
+    res.status(500).json({ error: 'Failed to add roomId to database' });
+  } finally {
+    await client.close();
+  }
+
+});
+
+// 
+app.get('/validateRoom/:roomId', async (req, res) => {
+  const { roomId } = req.params;
+
+  try {
+    // Connect to MongoDB
+    await client.connect();
+
+    // Access database and collection
+    const database = client.db('FictionaryDB');
+    const roomsCollection = database.collection('rooms');
+
+    // Check if room ID exists in the collection
+    const room = await roomsCollection.findOne({ roomId });
+
+    if (room) {
+      // Room ID exists, return success response
+      res.status(200).json({ message: 'Room ID is valid' });
+    } else {
+      // Room ID does not exist, return error response
+      res.status(404).json({ error: 'Room ID not found' });
     }
-    
-  });
-
-  // 
-  app.get('/validateRoom/:roomId', async (req, res) => {
-    const { roomId } = req.params;
-
-    try {
-        // Connect to MongoDB
-        await client.connect();
-
-        // Access database and collection
-        const database = client.db('FictionaryDB'); 
-        const roomsCollection = database.collection('rooms'); 
-
-        // Check if room ID exists in the collection
-        const room = await roomsCollection.findOne({ roomId });
-
-        if (room) {
-            // Room ID exists, return success response
-            res.status(200).json({ message: 'Room ID is valid' });
-        } else {
-            // Room ID does not exist, return error response
-            res.status(404).json({ error: 'Room ID not found' });
-        }
-    } catch (error) {
-        console.error('Error validating room ID:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    } finally {
-        // Close MongoDB connection
-        await client.close();
-    }
+  } catch (error) {
+    console.error('Error validating room ID:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    // Close MongoDB connection
+    await client.close();
+  }
 });
 // Modified object to track users in rooms, including their names
 const roomUsers = {};
@@ -236,6 +236,24 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('requestUserList', (roomId) => {
+    console.log("Requesting user list for room:", roomId);
+    // Check if the room exists and has users
+    if (roomUsers[roomId]) {
+      // Emit an event to the requesting socket with the current user list
+      socket.emit('updateUserList', roomUsers[roomId].map(user => ({
+        id: user.id,
+        name: user.name,
+        isHost: user.isHost,
+        totalScore: user.totalScore,
+        trickScore: user.trickScore,
+        artScore: user.artScore
+      })));
+    } else {
+      socket.emit('error', 'Room not found or no users in room.');
+    }
+  });
+
   socket.on('voteCategory', ({ roomId, category }) => {
     console.log(roomId, category);
     if (!gameState[roomId]) {
@@ -253,7 +271,6 @@ io.on('connection', (socket) => {
     // io.to(roomId).emit('updateVotes', gameState[roomId].votes);
   });
 
-  // Event to handle end of voting and selection of category
   socket.on('endVoting', (roomId) => {
     if (gameState[roomId] && gameState[roomId].votes) {
       const votes = gameState[roomId].votes;
@@ -273,6 +290,9 @@ io.on('connection', (socket) => {
       // Handle ties by selecting randomly
       const selectedCategory = winningCategories[Math.floor(Math.random() * winningCategories.length)];
 
+      // Store the selected category in the gameState object
+      gameState[roomId].selectedCategory = selectedCategory;
+
       // Broadcast the selected category to the room
       io.to(roomId).emit('categorySelected', selectedCategory);
     }
@@ -280,11 +300,9 @@ io.on('connection', (socket) => {
 
   socket.on('requestCurrentCategory', (roomId) => {
     if (gameState[roomId] && gameState[roomId].selectedCategory) {
-      console.log(roomId);
       socket.emit('currentCategory', gameState[roomId].selectedCategory);
     }
   });
-
   socket.on('draw', (data) => {
     console.log("Draw Emitted");
     if (roomUsers[data.room]) {
@@ -298,12 +316,12 @@ io.on('connection', (socket) => {
   });
 
   // Listener to update the scores of players after submitting their votes on guesses
-  socket.on('updateScores', ({room, authorId, voterId}) => {
+  socket.on('updateScores', ({ room, authorId, voterId }) => {
     const author = roomUsers[room][roomUsers[room].findIndex(user => user.id === authorId)];
     const voter = roomUsers[room][roomUsers[room].findIndex(user => user.id === voterId)];
 
     // checking the role of the author
-    if(author.isHost){
+    if (author.isHost) {
       // the voter gains a single bonus point that doesn't count towards either hidden score
       voter.totalScore++;
 
@@ -311,9 +329,9 @@ io.on('connection', (socket) => {
       author.artScore += 2;
       author.totalScore += 2;
     }
-    else{
+    else {
       // if the voter's total score is already 0, they cannot lose more points
-      if(voter.totalScore > 0){
+      if (voter.totalScore > 0) {
         // the voter's total score is reduced to simulate the author stealing them for their total score
         voter.totalScore--;
       }
@@ -331,8 +349,8 @@ io.on('connection', (socket) => {
       trickScore: user.trickScore,
       artScore: user.artScore
     })));
-  }); 
-  
+  });
+
 
   socket.on('disconnect', () => {
     console.log(`User ${socket.id} disconnected`);
@@ -342,13 +360,13 @@ io.on('connection', (socket) => {
         const wasHost = roomUsers[room][index].isHost;
         roomUsers[room].splice(index, 1);
         // Broadcast updated user list
-        io.to(room).emit('updateUserList', roomUsers[room].map(user => ({ id: user.id, name: user.name, isHost: user.isHost, totalScore: user.totalScore, trickScore: user.trickScore, artScore: user.artScore})));
+        io.to(room).emit('updateUserList', roomUsers[room].map(user => ({ id: user.id, name: user.name, isHost: user.isHost, totalScore: user.totalScore, trickScore: user.trickScore, artScore: user.artScore })));
         // If the host disconnected, pass host and drawing privilege to the next user
         if (wasHost && roomUsers[room].length > 0) {
           roomUsers[room][0].isHost = true; // Designate new host
           io.to(roomUsers[room][0].id).emit('drawingPrivilege', true);
           // Notify users of the new host
-          io.to(room).emit('updateUserList', roomUsers[room].map(user => ({ id: user.id, name: user.name, isHost: user.isHost, totalScore: user.totalScore, trickScore: user.trickScore, artScore: user.artScore})));
+          io.to(room).emit('updateUserList', roomUsers[room].map(user => ({ id: user.id, name: user.name, isHost: user.isHost, totalScore: user.totalScore, trickScore: user.trickScore, artScore: user.artScore })));
         }
         break;
       }
