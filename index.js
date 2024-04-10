@@ -192,6 +192,9 @@ const roomUsers = {};
 const gameState = {};
 let gameStart = {};
 let submits = 0;
+let roundCount = 0;
+let status = false;
+
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
 
@@ -246,7 +249,6 @@ io.on('connection', (socket) => {
   });
 
   socket.on('voteCategory', ({ roomId, category }) => {
-    console.log('vote category happened');
     submits++;
    // console.log(roomId, category);
     if (!gameState[roomId]) {
@@ -269,7 +271,6 @@ io.on('connection', (socket) => {
 
   // Event to handle end of voting and selection of category
   socket.on('endVoting', (roomId) => {
-    console.log('end voting happened');
     if (gameState[roomId] && gameState[roomId].votes) {
       const votes = gameState[roomId].votes;
       const categories = Object.keys(votes);
@@ -351,17 +352,18 @@ io.on('connection', (socket) => {
 //this is for the guessing on the drawing page
   socket.on('guessSubmitted', ( {room} ) => {
     submits++;
-    if(submits == (roomUsers[room].length - 1)) {
+    if(submits == (roomUsers[room].length - 1) && status) {
       submits = 0;
       //this never fired
       io.to(room).emit('allGuessed', submits);
     }
   });
 
-  socket.on('drawingSubmitted', (room) => {
-    io.to(room).emit('timeToGuess', 'It is time to guess');
+  socket.on('drawingSubmitted', ( {room} ) => {
+    status = true;
+    io.to(room).emit('timeToGuess', status);
   });
-  
+
   // this is for the voting on the voting page
   socket.on('voteSubmitted', ( {room} ) => {
     submits++;
@@ -369,6 +371,24 @@ io.on('connection', (socket) => {
       submits = 0;
       io.to(room).emit('votingDone', 'Voting is done');
     }
+});
+
+
+socket.on('resultsSubmitted', ( {room} ) => {
+  submits++;
+  if(submits == roomUsers[room].length) {
+    submits = 0;
+    io.to(room).emit('resultsDone', 'results are done');
+  }
+});
+
+socket.on('scoreSubmitted', ( {room} ) => {
+  submits++;
+  if(submits == roomUsers[room].length) {
+    submits = 0;
+    roundCount++;
+    io.to(room).emit('scoreDone', roundCount);
+  }
 });
   socket.on('disconnect', () => {
     console.log(`User ${socket.id} disconnected`);
