@@ -235,6 +235,8 @@ app.get('/validateRoom/:roomId', async (req, res) => {
 const roomUsers = {};
 const gameState = {};
 let gameStart = {};
+const chatLog = {};
+let chatLogToString = "";
 let submits = 0;
 let roundCount = 0;
 let status = false;
@@ -373,6 +375,22 @@ io.on('connection', (socket) => {
         socket.to(data.room).emit('drawing', data);
       }
     }
+  });
+
+  socket.on('sendMessage', ({room, chat}) => {
+    // chatLog[chatLog.length] = chat;
+    chatLog[room] = chatLog[room] || [];
+    chatLog[room].push(chat);
+    // console.log("Index of user: " + index);
+    let chatTemp = "";
+    for(let i = 0 ; i < chatLog[room].length ; i++)
+    {
+      chatTemp += (chatLog[room][i] + "\n");
+      // console.log("chat data:\n" + chatTemp);
+    }
+    chatLogToString = chatTemp;
+
+    io.to(room).emit('getChat', chatLogToString);
   });
 
   // Listener to update the scores of players after submitting their votes on guesses
