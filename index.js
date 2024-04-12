@@ -234,6 +234,7 @@ app.get('/validateRoom/:roomId', async (req, res) => {
 // Modified object to track users in rooms, including their names
 const roomUsers = {};
 const gameState = {};
+const roomGuesses = {};
 let gameStart = {};
 let submits = 0;
 let roundCount = 0;
@@ -253,6 +254,7 @@ io.on('connection', (socket) => {
     if(!gameStart[room].isStarted) {
     socket.join(room);
     roomUsers[room] = roomUsers[room] || [];
+    roomGuesses[room] = roomGuesses[room] || [];
     const isHost = roomUsers[room].length === 0; // First user to join is the host
     const totalScore = 0;
     const trickScore = 0;
@@ -410,6 +412,25 @@ io.on('connection', (socket) => {
       artScore: user.artScore
     })));
   }); 
+
+  socket.on('submitGuess', ({room, guess}) => {
+    roomGuesses[room].push({text: guess, userId: socket.id, voterIds: []});
+    io.to(room).emit('updateGuesses', roomGuesses[room].map(guess => ({
+      text: guess.text,
+      userId: guess.userId,
+      voterIds: guess.voterIds.map(voterId => voterId.voterId)
+    })));
+  });
+
+  socket.on('changeGuesses', ({room, guesses}) => {
+      roomGuesses[room].length = 0;
+      roomGuesses[room] = guesses;
+      io.to(room).emit('updateGuesses', roomGuesses[room].map(guess => ({
+        text: guess.text,
+        userId: guess.userId,
+        voterIds: guess.voterIds.map(voterId => voterId.voterId)
+      })));
+  });
 
 //this is for the guessing on the drawing page
   socket.on('guessSubmitted', ( {room} ) => {
