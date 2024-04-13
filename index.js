@@ -413,25 +413,44 @@ io.on('connection', (socket) => {
     })));
   }); 
 
+
+  // method that adds a new guess onto the end of the guess array
   socket.on('submitGuess', ({room, guess}) => {
     roomGuesses[room].push({text: guess, userId: socket.id, voterIds: []});
+
+    // emitting the new guess list out into the room for other players
     io.to(room).emit('updateGuesses', roomGuesses[room].map(guess => ({
       text: guess.text,
       userId: guess.userId,
-      voterIds: guess.voterIds.map(voterId => voterId.voterId)
+      voterIds: guess.voterIds.map(id => ({voterId: id}))
     })));
   });
 
-  socket.on('changeGuesses', ({room, guesses}) => {
-      roomGuesses[room].length = 0;
-      roomGuesses[room] = guesses;
-      io.to(room).emit('updateGuesses', roomGuesses[room].map(guess => ({
-        text: guess.text,
-        userId: guess.userId,
-        voterIds: guess.voterIds.map(voterId => voterId.voterId)
-      })));
+  // method to change the guesses array when a guess button is selected
+  socket.on('changeGuesses', ({room, authorId, voterId}) => {
+    // will remove a voters id if it was already associated with another guess (voter can only select one guess)
+    roomGuesses[room] = roomGuesses[room].map((guess) => {
+      if(guess.voterIds.find((id) => id === voterId)){
+        let index = guess.voterIds.indexOf(voterId);
+        guess.voterIds.splice(index, 1);
+      }
+    });
+    // adds the voters id to the voterids array inside of the guess
+    roomGuesses[room] = roomGuesses[room].map((guess) => {
+      if(guess.userId === authorId){
+        guess.voterIds.push({voterId: voterId});
+      }
+    });
+
+    // emiting the new guess list to the room for other players
+    io.to(room).emit('updateGuesses', roomGuesses[room].map(guess => ({
+      text: guess.text,
+      userId: guess.userId,
+      voterIds: guess.voterIds.map(id => ({voterId: id}))
+    })));
   });
 
+  
 //this is for the guessing on the drawing page
   socket.on('guessSubmitted', ( {room} ) => {
     submits++;
@@ -468,6 +487,7 @@ socket.on('resultsSubmitted', ( {room} ) => {
 socket.on('scoreSubmitted', ( {room} ) => {
   submits++;
   if(submits == roomUsers[room].length) {
+    roomGuesses[room].length = 0;
     submits = 0;
     roundCount++;
     io.to(room).emit('scoreDone', roundCount);
