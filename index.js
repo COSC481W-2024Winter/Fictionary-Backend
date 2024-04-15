@@ -235,11 +235,14 @@ app.get('/validateRoom/:roomId', async (req, res) => {
 const roomUsers = {};
 const gameState = {};
 let gameStart = {};
+
 const chatLog = {};
 let chatLogToString = "";
-let submits = 0;
-let roundCount = 0;
-let status = false;
+
+const submits = {};
+const roundCount = {};
+const status = {};
+
 
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
@@ -271,7 +274,6 @@ io.on('connection', (socket) => {
       trickScore: user.trickScore,
       artScore: user.artScore
     })));
-
     // Grant drawing privilege to the host
     if (isHost) {
       socket.emit('drawingPrivilege', true);
@@ -287,6 +289,10 @@ io.on('connection', (socket) => {
         if(!gameStart[room].isStarted) {
           gameStart[room].isStarted = true;
         }
+        // initalize variables
+        submits[room] = 0;
+        roundCount[room] = 0;
+        status[room] = false;
         io.to(room).emit('gameStarted');
       } else {
         socket.emit('error', 'Not enough players to start the game.');
@@ -313,7 +319,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('voteCategory', ({ roomId, category }) => {
-    submits++;
+    submits[roomId]++;
    // console.log(roomId, category);
     if (!gameState[roomId]) {
       gameState[roomId] = { votes: {} }; // Initialize if not present
@@ -325,9 +331,9 @@ io.on('connection', (socket) => {
     }
 
     gameState[roomId].votes[category] += 1; // Increment vote count
-    if(submits == roomUsers[roomId].length) {
-      submits = 0;
-      io.to(roomId).emit('allVoted', submits);
+    if(submits[roomId] == roomUsers[roomId].length) {
+      submits[roomId] = 0;
+      io.to(roomId).emit('allVoted', submits[roomId]);
     }
     // Optional: Broadcast updated votes to the room if desired
     // io.to(roomId).emit('updateVotes', gameState[roomId].votes);
@@ -431,43 +437,43 @@ io.on('connection', (socket) => {
 
 //this is for the guessing on the drawing page
   socket.on('guessSubmitted', ( {room} ) => {
-    submits++;
-    if(submits == (roomUsers[room].length - 1) && status) {
-      submits = 0;
+    submits[room]++;
+    if(submits[room] == (roomUsers[room].length - 1) && status[room]) {
+      submits[room] = 0;
       //this never fired
-      io.to(room).emit('allGuessed', submits);
+      io.to(room).emit('allGuessed', submits[room]);
     }
   });
 
   socket.on('drawingSubmitted', ( {room} ) => {
-    status = true;
-    io.to(room).emit('timeToGuess', status);
+    status[room] = true;
+    io.to(room).emit('timeToGuess', status[room]);
   });
 
   // this is for the voting on the voting page
   socket.on('voteSubmitted', ( {room} ) => {
-    submits++;
-    if(submits == roomUsers[room].length - 1) {
-      submits = 0;
+    submits[room]++;
+    if(submits[room] == roomUsers[room].length - 1) {
+      submits[room] = 0;
       io.to(room).emit('votingDone', 'Voting is done');
     }
 });
 
 
 socket.on('resultsSubmitted', ( {room} ) => {
-  submits++;
-  if(submits == roomUsers[room].length) {
-    submits = 0;
+  submits[room]++;
+  if(submits[room] == roomUsers[room].length) {
+    submits[room] = 0;
     io.to(room).emit('resultsDone', 'results are done');
   }
 });
 
 socket.on('scoreSubmitted', ( {room} ) => {
-  submits++;
-  if(submits == roomUsers[room].length) {
-    submits = 0;
-    roundCount++;
-    io.to(room).emit('scoreDone', roundCount);
+  submits[room]++;
+  if(submits[room] == roomUsers[room].length) {
+    submits[room] = 0;
+    roundCount[room]++;
+    io.to(room).emit('scoreDone', roundCount[room]);
   }
 });
   socket.on('disconnect', () => {
