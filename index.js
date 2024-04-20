@@ -238,6 +238,7 @@ let gameStart = {};
 const submits = {};
 const roundCount = {};
 const status = {};
+const canvasImage = {};
 
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
@@ -424,9 +425,14 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('drawingSubmitted', ( {room} ) => {
+  socket.on('drawingSubmitted', ( {room, base64} ) => {
     status[room] = true;
+    canvasImage[room] = base64;
     io.to(room).emit('timeToGuess', status[room]);
+  });
+
+  socket.on('getCanvas',  ({room} ) => {
+    io.to(room).emit('returnCanvas', canvasImage[room]);
   });
 
   // this is for the voting on the voting page
