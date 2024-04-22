@@ -236,9 +236,15 @@ const roomUsers = {};
 const gameState = {};
 const roomGuesses = {};
 let gameStart = {};
+
+const chatLog = {};
+let chatLogToString = "";
+
 const submits = {};
 const roundCount = {};
 const status = {};
+const canvasImage = {};
+
 
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
@@ -380,6 +386,22 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('sendMessage', ({room, chat}) => {
+    // chatLog[chatLog.length] = chat;
+    chatLog[room] = chatLog[room] || [];
+    chatLog[room].push(chat);
+    // console.log("Index of user: " + index);
+    let chatTemp = "";
+    for(let i = 0 ; i < chatLog[room].length ; i++)
+    {
+      chatTemp += (chatLog[room][i] + "\n");
+      // console.log("chat data:\n" + chatTemp);
+    }
+    chatLogToString = chatTemp;
+
+    io.to(room).emit('getChat', chatLogToString);
+  });
+
   // Listener to update the scores of players after submitting their votes on guesses
   socket.on('updateScores', ({ room, authorId, voterId }) => {
     const author = roomUsers[room][roomUsers[room].findIndex(user => user.id === authorId)];
@@ -464,9 +486,14 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('drawingSubmitted', ( {room} ) => {
+  socket.on('drawingSubmitted', ( {room, base64} ) => {
     status[room] = true;
+    canvasImage[room] = base64;
     io.to(room).emit('timeToGuess', status[room]);
+  });
+
+  socket.on('getCanvas',  ({room} ) => {
+    io.to(room).emit('returnCanvas', canvasImage[room]);
   });
 
   // this is for the voting on the voting page
