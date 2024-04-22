@@ -45,7 +45,7 @@ async function getWords() {
     while (await cursor.hasNext()) {
       const doc = await cursor.next();
       wordsFromcategory.push(doc['word']);
-      console.log(doc['word']);
+      //console.log(doc['word']);
     }
 
     //get random word
@@ -87,13 +87,13 @@ async function getWords(){
     while(await cursor.hasNext()){
       const doc = await cursor.next();
       wordsFromCategory.push(doc['word']);
-      console.log(doc['word']);
+      //console.log(doc['word']);
     }
     
     //get random word
     let random = Math.floor(Math.random() * wordsFromCategory.length);
     randomWord = wordsFromCategory[random]; 
-    console.log(randomWord);
+    console.log("random word:"+randomWord);
   } catch (error) {
     console.log(error);
   }
@@ -106,7 +106,7 @@ app.get('/categories', (req, res) => {
     //New connection
     await client.connect();
     const theSeed = req.query.seed;
-    console.log("seed:" + theSeed);
+    //console.log("seed:" + theSeed);
 
     try {
       const database = client.db('FictionaryDB');
@@ -118,12 +118,12 @@ app.get('/categories', (req, res) => {
       //get 3 random items from the list
       for (let i = 0; i < 3; i++) {
         const rng = seedrandom(theSeed);
-        console.log(rng());
+        //console.log(rng());
         let random = Math.floor(rng() * categories.length - 1);
         randomCategories = randomCategories.concat(categories.splice(random, 1));
       }
 
-      console.log(randomCategories);
+      //console.log(randomCategories);
       let myJson = JSON.stringify(randomCategories);
       //console.log(myJson);
       res.send(myJson);//convert to json before sending
@@ -159,7 +159,7 @@ app.get('/words',(req,res)=>{
 
         const doc = await cursor.next();
         wordsFromCategory.push(doc['word']);
-        console.log(doc['word']);
+        //console.log(doc['word']); //uncomment it you want to see the list of words
       }
 
       await cursor.close();
@@ -171,7 +171,7 @@ app.get('/words',(req,res)=>{
 
       //send
       let myJson = JSON.stringify(randomWord);
-      console.log(myJson);
+      //console.log(myJson);
       res.send(myJson);//convert to json before sending
   
     }catch (error) {
@@ -375,12 +375,12 @@ io.on('connection', (socket) => {
     }
   });
   socket.on('draw', (data) => {
-    console.log("Draw Emitted");
+    //console.log("Draw Emitted");
     if (roomUsers[data.room]) {
       const user = roomUsers[data.room].find(user => user.id === socket.id);
 
       if (user && user.isHost) {
-        console.log(data);
+        //console.log(data);
         socket.to(data.room).emit('drawing', data);
       }
     }
