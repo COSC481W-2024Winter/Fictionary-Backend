@@ -461,6 +461,7 @@ io.on('connection', (socket) => {
       }
     });
     // adds the voters id to the voterids array inside of the guess
+    //Currently crashing backend - guess is UNDEFINED
     roomGuesses[room] = roomGuesses[room].map((guess) => {
       if(guess.userId === authorId){
         guess.voterIds.push({voterId: voterId});
