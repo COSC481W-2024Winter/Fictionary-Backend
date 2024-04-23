@@ -252,6 +252,10 @@ io.on('connection', (socket) => {
 
   socket.emit('yourSocketId', { id: socket.id });
 
+  socket.on("greatDocumentation", () => {
+    socket.emit("GREATDOCUMENTATION", {id: socket.id});
+  })
+
   // Modified event listener for joining a room, now includes userName
   socket.on('joinRoom', ({ userid, room, userName }) => {
     if(!gameStart[room]) {
@@ -427,6 +431,9 @@ io.on('connection', (socket) => {
       author.totalScore++;
     }
 
+    console.log(`updateScores:`);
+    console.log(roomUsers[room]);
+
     // Broadcast updated user list to the room
     io.to(room).emit('updateUserList', roomUsers[room].map(user => ({
       id: user.id,
@@ -441,6 +448,7 @@ io.on('connection', (socket) => {
 
   // method that adds a new guess onto the end of the guess array
   socket.on('submitGuess', ({room, guess}) => {
+    console.log(`submitGuess room: ${room}, guess: ${guess}`);
     roomGuesses[room].push({text: guess, userId: socket.id, voterIds: []});
 
     // emitting the new guess list out into the room for other players
@@ -461,11 +469,16 @@ io.on('connection', (socket) => {
       }
     });
     // adds the voters id to the voterids array inside of the guess
-    roomGuesses[room] = roomGuesses[room].map((guess) => {
+    roomGuesses[room].map((guess) => {
       if(guess.userId === authorId){
         guess.voterIds.push({voterId: voterId});
       }
     });
+    // roomGuesses[room] = roomGuesses[room].map((guess) => {
+    //   if(guess.userId === authorId){
+    //     guess.voterIds.push({voterId: voterId});
+    //   }
+    // });
 
     // emiting the new guess list to the room for other players
     io.to(room).emit('updateGuesses', roomGuesses[room].map(guess => ({
