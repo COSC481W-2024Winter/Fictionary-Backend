@@ -252,6 +252,10 @@ io.on('connection', (socket) => {
 
   socket.emit('yourSocketId', { id: socket.id });
 
+  socket.on("greatDocumentation", () => {
+    socket.emit("GREATDOCUMENTATION", {id: socket.id});
+  })
+
   // Modified event listener for joining a room, now includes userName
   socket.on('joinRoom', ({ userid, room, userName }) => {
     if(!gameStart[room]) {
@@ -427,6 +431,9 @@ io.on('connection', (socket) => {
       author.totalScore++;
     }
 
+    console.log(`updateScores:`);
+    console.log(roomUsers[room]);
+
     // Broadcast updated user list to the room
     io.to(room).emit('updateUserList', roomUsers[room].map(user => ({
       id: user.id,
@@ -441,10 +448,11 @@ io.on('connection', (socket) => {
 
   // method that adds a new guess onto the end of the guess array
   socket.on('submitGuess', ({room, guess}) => {
+    console.log(`submitGuess room: ${room}, guess: ${guess}`);
     roomGuesses[room].push({text: guess, userId: socket.id, voterIds: []});
 
     // emitting the new guess list out into the room for other players
-    io.to(room).emit('updateGuesses', roomGuesses[room].map(guess => ({
+    io.to(room).emit('updateGuesses', roomGuesses[room].map(guess => ({ //null?
       text: guess.text,
       userId: guess.userId,
       voterIds: guess.voterIds.map(id => ({voterId: id}))
@@ -454,18 +462,26 @@ io.on('connection', (socket) => {
   // method to change the guesses array when a guess button is selected
   socket.on('changeGuesses', ({room, authorId, voterId}) => {
     // will remove a voters id if it was already associated with another guess (voter can only select one guess)
-    roomGuesses[room] = roomGuesses[room].map((guess) => {
+    //Print guess
+    console.log("Result.js - Guesses: "+JSON.stringify(roomGuesses[room], null, 2));//FINE
+    roomGuesses[room].map((guess) => { // roomGuesses[room] = 
       if(guess.voterIds.find((id) => id === voterId)){
         let index = guess.voterIds.indexOf(voterId);
         guess.voterIds.splice(index, 1);
       }
     });
+    console.log("Result.js - Guesses again!: "+JSON.stringify(roomGuesses[room], null, 2));//NOT FINE
     // adds the voters id to the voterids array inside of the guess
-    roomGuesses[room] = roomGuesses[room].map((guess) => {
-      if(guess.userId === authorId){
+    roomGuesses[room].map((guess) => {
+      if(guess.userId === authorId){ //GUESS IS NULL
         guess.voterIds.push({voterId: voterId});
       }
     });
+    // roomGuesses[room] = roomGuesses[room].map((guess) => {
+    //   if(guess.userId === authorId){
+    //     guess.voterIds.push({voterId: voterId});
+    //   }
+    // });
 
     // emiting the new guess list to the room for other players
     io.to(room).emit('updateGuesses', roomGuesses[room].map(guess => ({
